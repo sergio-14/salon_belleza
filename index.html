@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bella Estilo · Administración</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<style>body{font-family:ui-sans-serif,system-ui,sans-serif}.nav-active{background:#fce7f3;color:#be185d}</style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+<!-- LOGIN -->
+<section id="login" class="min-h-screen grid lg:grid-cols-2">
+  <div class="relative h-44 lg:h-auto">
+    <img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1200&q=80" alt="Salón" class="absolute inset-0 w-full h-full object-cover" onerror="this.style.display='none'">
+    <div class="absolute inset-0 bg-gradient-to-t from-pink-900/70 to-pink-500/20"></div>
+    <div class="absolute bottom-4 left-5 right-5 lg:bottom-10 lg:left-10 text-white">
+      <h2 class="text-2xl lg:text-4xl font-bold">Bella Estilo</h2>
+      <p class="mt-1 text-pink-100 text-sm lg:text-base">Gestiona ventas, servicios, gastos y empleados en un solo lugar.</p>
+    </div>
+  </div>
+  <div class="flex items-center justify-center p-6 lg:p-8 bg-white">
+    <div class="w-full max-w-sm">
+      <div class="w-12 h-12 rounded-lg bg-pink-600 text-white flex items-center justify-center text-2xl mb-5">✂</div>
+      <h1 class="text-2xl font-bold">Bienvenida de nuevo</h1>
+      <p class="text-gray-500 mb-5">Ingresa con tu usuario y contraseña.</p>
+      <label class="text-sm font-medium">Usuario</label>
+      <input id="user" placeholder="Ej: admin" class="w-full mt-1 mb-4 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400">
+      <label class="text-sm font-medium">Contraseña</label>
+      <input id="pass" type="password" placeholder="••••••••" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400">
+      <p id="err" class="text-sm text-red-600 mt-2 hidden">Usuario o contraseña incorrectos.</p>
+      <button onclick="doLogin()" class="w-full mt-5 py-2.5 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-lg">Ingresar</button>
+      <div class="mt-5 p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-500 space-y-1">
+        <p class="font-semibold text-gray-600">Usuarios de demostración:</p>
+        <p><b>admin</b> / admin123 · Administradora (acceso total)</p>
+        <p><b>caja</b> / caja123 · Cajera (ventas, gastos, inventario)</p>
+        <p><b>estilista</b> / est123 · Estilista (solo ventas)</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- APP -->
+<div id="app" class="hidden min-h-screen">
+  <header class="lg:hidden fixed top-0 inset-x-0 h-14 bg-white border-b border-gray-200 z-30 flex items-center justify-between px-4">
+    <button onclick="toggleSide()" class="w-10 h-10 rounded-lg hover:bg-gray-100 text-xl">☰</button>
+    <span class="font-bold">Bella Estilo</span>
+    <span class="w-10"></span>
+  </header>
+  <div id="overlay" onclick="toggleSide()" class="fixed inset-0 bg-black/40 z-30 hidden lg:hidden"></div>
+  <aside id="side" class="w-64 lg:w-60 bg-white border-r border-gray-200 p-4 flex flex-col fixed top-0 left-0 h-full z-40 -translate-x-full lg:translate-x-0 transition-transform">
+    <div class="flex items-center gap-2 mb-6 px-2">
+      <div class="w-9 h-9 rounded-lg bg-pink-600 text-white flex items-center justify-center">✂</div>
+      <span class="font-bold text-lg">Bella Estilo</span>
+    </div>
+    <nav id="nav" class="space-y-1 text-sm font-medium"></nav>
+    <div class="mt-auto">
+      <div class="flex items-center gap-3 p-3 bg-pink-50 rounded-lg mb-2">
+        <div id="avatar" class="w-9 h-9 rounded-lg bg-pink-600 text-white flex items-center justify-center font-bold"></div>
+        <div class="min-w-0"><p id="uname" class="text-sm font-semibold truncate"></p><p id="urole" class="text-xs text-gray-500"></p></div>
+      </div>
+      <button onclick="logout()" class="w-full px-3 py-2 text-left text-gray-500 hover:bg-gray-100 rounded-lg text-sm">⎋ Cerrar sesión</button>
+    </div>
+  </aside>
+  <main class="lg:ml-60 p-4 pt-20 lg:p-8"><div id="view"></div></main>
+</div>
+
+<div id="toast" class="fixed bottom-6 right-4 left-4 sm:left-auto sm:right-6 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg hidden z-50"></div>
+
+<script>
+const fb = "this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22><rect width=%22200%22 height=%22150%22 fill=%22%23fbcfe8%22/></svg>'";
+const U = id => `https://images.unsplash.com/${id}?w=400&q=70`;
+const users = {
+  admin:{pass:'admin123',nombre:'Carla Mendoza',cargo:'Administradora',rol:'admin'},
+  caja:{pass:'caja123',nombre:'Rosa Flores',cargo:'Cajera',rol:'caja'},
+  estilista:{pass:'est123',nombre:'Valeria Rojas',cargo:'Estilista',rol:'estilista'},
+};
+const products = [
+  {id:'p1',name:'Labial Mate Rosa',price:85,stock:24,img:U('photo-1596462502278-27bfdc403348')},
+  {id:'p2',name:'Paleta de Sombras',price:150,stock:12,img:U('photo-1487412947147-5cebf100ffc2')},
+  {id:'p3',name:'Base Líquida',price:120,stock:18,img:U('photo-1522335789203-aabd1fc54bc9')},
+  {id:'p4',name:'Esmalte Gel (set)',price:95,stock:30,img:U('photo-1604654894610-df63bc536371')},
+  {id:'p5',name:'Kit Uñas Acrílicas',price:210,stock:8,img:U('photo-1519014816548-bf5fe059798b')},
+  {id:'p6',name:'Rímel Volumen',price:70,stock:20,img:U('photo-1631214524020-7e18db9a8f92')},
+];
+const services = [
+  {id:'s1',name:'Corte de Cabello',price:60,dur:'45 min',img:U('photo-1522337360788-8b13dee7a37e')},
+  {id:'s2',name:'Manicure',price:50,dur:'60 min',img:U('photo-1604654894610-df63bc536371')},
+  {id:'s3',name:'Maquillaje Social',price:200,dur:'90 min',img:U('photo-1487412947147-5cebf100ffc2')},
+  {id:'s4',name:'Peinado y Brushing',price:90,dur:'60 min',img:U('photo-1560066984-138dadb4c035')},
+];
+const cargos = ['Administradora','Cajera','Estilista','Manicurista','Maquilladora','Ayudante'];
+const cargoColor = {Administradora:'bg-pink-100 text-pink-700',Cajera:'bg-blue-100 text-blue-700',Estilista:'bg-purple-100 text-purple-700',Manicurista:'bg-amber-100 text-amber-700',Maquilladora:'bg-emerald-100 text-emerald-700',Ayudante:'bg-gray-100 text-gray-700'};
+let empleados = [
+  {id:1,nombre:'Carla Mendoza',cargo:'Administradora',sueldo:3500,tel:'7001-2345'},
+  {id:2,nombre:'Rosa Flores',cargo:'Cajera',sueldo:2500,tel:'7112-3456'},
+  {id:3,nombre:'Valeria Rojas',cargo:'Estilista',sueldo:3000,tel:'7223-4567'},
+  {id:4,nombre:'Daniela Suárez',cargo:'Manicurista',sueldo:2800,tel:'7334-5678'},
+  {id:5,nombre:'Fernanda Vaca',cargo:'Maquilladora',sueldo:3000,tel:'7445-6789'},
+];
+const cats = ['Alquiler','Servicios básicos','Insumos','Sueldos','Publicidad','Otros'];
+const hoy = new Date().toLocaleDateString('es-BO');
+let gastos = [
+  {id:1,fecha:hoy,cat:'Alquiler',desc:'Alquiler del local',monto:1500},
+  {id:2,fecha:hoy,cat:'Servicios básicos',desc:'Luz y agua',monto:320},
+  {id:3,fecha:hoy,cat:'Insumos',desc:'Tintes y shampoo',monto:450},
+];
+let sales = [
+  {id:1001,cli:'María Rojas',items:'Corte de Cabello, Manicure',type:'Servicio',total:110,hora:'09:15',emp:'Valeria Rojas'},
+  {id:1002,cli:'Lucía Vaca',items:'Labial Mate Rosa',type:'Producto',total:85,hora:'10:30',emp:'Rosa Flores'},
+  {id:1003,cli:'Ana Suárez',items:'Maquillaje Social',type:'Servicio',total:200,hora:'11:45',emp:'Fernanda Vaca'},
+  {id:1004,cli:'Carla Peña',items:'Base Líquida, Rímel Volumen',type:'Producto',total:190,hora:'12:20',emp:'Rosa Flores'},
+];
+let cart = [], tab = 'prod', page = 'dash', me = null, posCli = '', posEmp = '';
+const bs = n => 'Bs ' + n.toLocaleString('es-BO',{minimumFractionDigits:2,maximumFractionDigits:2});
+const $ = id => document.getElementById(id);
+const menu = [['dash','▦','Dashboard',['admin','caja']],['pos','🛒','Nueva venta',['admin','caja','estilista']],['gastos','💸','Gastos',['admin','caja']],['inv','📦','Inventario',['admin','caja']],['emp','👥','Empleados',['admin']],['ventas','🧾','Ventas del día',['admin','caja','estilista']]];
+
+function doLogin(){
+  const u = users[$('user').value.trim().toLowerCase()];
+  if(u && u.pass === $('pass').value){
+    me = u; $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+    $('uname').textContent = u.nombre; $('urole').textContent = u.cargo; $('avatar').textContent = u.nombre[0];
+    go(menu.find(m=>m[3].includes(u.rol))[0]);
+  } else $('err').classList.remove('hidden');
+}
+['user','pass'].forEach(i=>$(i).addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); }));
+function logout(){ me=null; $('app').classList.add('hidden'); $('login').classList.remove('hidden'); $('pass').value=''; $('err').classList.add('hidden'); }
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.remove('hidden'); setTimeout(()=>t.classList.add('hidden'),2500); }
+function toggleSide(){ $('side').classList.toggle('-translate-x-full'); $('overlay').classList.toggle('hidden'); }
+
+function go(p){
+  page = p;
+  $('nav').innerHTML = menu.filter(m=>m[3].includes(me.rol)).map(([k,i,l])=>`<button onclick="go('${k}')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 text-left ${k===p?'nav-active':'text-gray-600'}"><span>${i}</span>${l}</button>`).join('');
+  if(!$('side').classList.contains('-translate-x-full') && window.innerWidth<1024) toggleSide();
+  render(); window.scrollTo(0,0);
+}
+function render(){ $('view').innerHTML = ({dash,pos,gastos:gas,inv,emp,ventas:vent})[page](); }
+
+function stats(){
+  const total = sales.reduce((a,s)=>a+s.total,0), g = gastos.reduce((a,x)=>a+x.monto,0);
+  return {total, g, util:total-g, n:sales.length, serv:sales.filter(s=>s.type==='Servicio').length, prod:sales.filter(s=>s.type==='Producto').length, stock:products.reduce((a,p)=>a+p.stock,0)};
+}
+const card = (t,v,c) => `<div class="bg-white border border-gray-200 rounded-lg p-4 lg:p-5"><p class="text-xs lg:text-sm text-gray-500">${t}</p><p class="text-xl lg:text-2xl font-bold mt-1 ${c}">${v}</p></div>`;
+const head = (t,s) => `<h1 class="text-2xl font-bold">${t}</h1><p class="text-gray-500 mb-5">${s}</p>`;
+const inp = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white';
+const btn = 'px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-lg text-sm';
+
+function dash(){
+  const s = stats();
+  const days=[['Lun',820],['Mar',640],['Mié',910],['Jue',760],['Vie',1230],['Sáb',1580],['Hoy',s.total]];
+  const max = Math.max(...days.map(d=>d[1]));
+  return head('Dashboard','Resumen de la actividad del salón') + `
+  <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4 mb-5">
+    ${card('Ingresos de hoy',bs(s.total),'text-pink-600')}
+    ${card('Gastos de hoy',bs(s.g),'text-red-600')}
+    ${card('Utilidad',bs(s.util),s.util>=0?'text-emerald-600':'text-red-600')}
+    ${card('Ventas registradas',s.n,'')}
+    ${card('Servicios prestados',s.serv,'text-purple-600')}
+    ${card('Productos en stock',s.stock,'text-emerald-600')}
+  </div>
+  <div class="grid lg:grid-cols-3 gap-4">
+    <div class="lg:col-span-2 bg-white border border-gray-200 rounded-lg p-4 lg:p-5">
+      <h3 class="font-semibold mb-4">Ingresos de la semana (Bs)</h3>
+      <div class="flex items-end gap-2 lg:gap-3 h-48">
+        ${days.map(([d,v])=>`<div class="flex-1 flex flex-col items-center justify-end h-full"><span class="text-[10px] lg:text-xs text-gray-500 mb-1">${Math.round(v)}</span><div class="w-full rounded-lg ${d==='Hoy'?'bg-pink-600':'bg-pink-200'}" style="height:${v/max*85}%"></div><span class="text-xs mt-2">${d}</span></div>`).join('')}
+      </div>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-lg p-4 lg:p-5">
+      <h3 class="font-semibold mb-4">Más vendidos</h3>
+      ${[['Corte de Cabello',42],['Manicure',35],['Labial Mate Rosa',28],['Maquillaje Social',19]].map(([n,v])=>`<div class="mb-3"><div class="flex justify-between text-sm"><span>${n}</span><span class="text-gray-500">${v}</span></div><div class="h-2 bg-gray-100 rounded-lg mt-1"><div class="h-2 bg-purple-500 rounded-lg" style="width:${v/42*100}%"></div></div></div>`).join('')}
+    </div>
+  </div>
+  <div class="bg-white border border-gray-200 rounded-lg p-4 lg:p-5 mt-4"><h3 class="font-semibold mb-3">Últimas ventas</h3>${table(sales.slice(-4).reverse())}</div>`;
+}
+
+function table(rows){
+  return `<div class="overflow-x-auto"><table class="w-full text-sm whitespace-nowrap"><thead><tr class="text-left text-gray-500 border-b"><th class="py-2 pr-3">N°</th><th class="pr-3">Cliente</th><th class="pr-3">Detalle</th><th class="pr-3">Atendió</th><th class="pr-3">Tipo</th><th class="pr-3">Hora</th><th class="text-right">Total</th></tr></thead><tbody>
+  ${rows.map(r=>`<tr class="border-b last:border-0"><td class="py-2.5 pr-3">#${r.id}</td><td class="pr-3">${r.cli}</td><td class="pr-3">${r.items}</td><td class="pr-3">${r.emp||'-'}</td><td class="pr-3"><span class="px-2 py-0.5 rounded-lg text-xs ${r.type==='Servicio'?'bg-purple-100 text-purple-700':'bg-pink-100 text-pink-700'}">${r.type}</span></td><td class="pr-3">${r.hora}</td><td class="text-right font-semibold">${bs(r.total)}</td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+
+function pos(){
+  const list = tab==='prod' ? products : services;
+  const total = cart.reduce((a,i)=>a+i.price*i.qty,0);
+  if(!posEmp) posEmp = me.nombre;
+  return head('Nueva venta','Selecciona productos o servicios para registrar la venta') + `
+  <div class="grid xl:grid-cols-3 gap-5">
+    <div class="xl:col-span-2 order-2 xl:order-1">
+      <div class="flex gap-2 mb-4">
+        <button onclick="tab='prod';render()" class="px-4 py-2 rounded-lg text-sm font-medium ${tab==='prod'?'bg-pink-600 text-white':'bg-white border border-gray-200'}">Productos</button>
+        <button onclick="tab='serv';render()" class="px-4 py-2 rounded-lg text-sm font-medium ${tab==='serv'?'bg-pink-600 text-white':'bg-white border border-gray-200'}">Servicios</button>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3 lg:gap-4">
+        ${list.map(i=>`<div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <img src="${i.img}" onerror="${fb}" class="w-full h-28 lg:h-32 object-cover" alt="${i.name}">
+          <div class="p-3"><p class="font-medium text-sm">${i.name}</p>
+          <p class="text-xs text-gray-500">${i.stock!==undefined?'Stock: '+i.stock:'Duración: '+i.dur}</p>
+          <div class="flex flex-wrap justify-between items-center gap-2 mt-2"><span class="font-bold text-pink-600">${bs(i.price)}</span>
+          <button onclick="add('${i.id}')" class="px-3 py-1 bg-pink-50 hover:bg-pink-100 text-pink-700 rounded-lg text-sm font-semibold">+ Agregar</button></div></div></div>`).join('')}
+      </div>
+    </div>
+    <div class="order-1 xl:order-2 bg-white border border-gray-200 rounded-lg p-4 lg:p-5 h-fit">
+      <h3 class="font-semibold mb-3">Detalle de venta</h3>
+      <input id="cli" value="${posCli}" oninput="posCli=this.value" placeholder="Nombre del cliente" class="${inp} mb-2">
+      <select id="empSel" onchange="posEmp=this.value" class="${inp} mb-3">${empleados.map(e=>`<option ${e.nombre===posEmp?'selected':''}>${e.nombre}</option>`).join('')}</select>
+      ${cart.length? cart.map(i=>`<div class="flex justify-between items-center text-sm py-2 border-b"><div><p>${i.name}</p><p class="text-xs text-gray-500">${i.qty} × ${bs(i.price)}</p></div><div class="flex items-center gap-2"><b>${bs(i.qty*i.price)}</b><button onclick="rm('${i.id}')" class="text-red-500 px-1">✕</button></div></div>`).join('') : '<p class="text-sm text-gray-400 py-4 text-center">Carrito vacío</p>'}
+      <div class="flex justify-between text-lg font-bold mt-4"><span>Total</span><span class="text-pink-600">${bs(total)}</span></div>
+      <button onclick="checkout()" class="w-full mt-4 py-2.5 bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-lg">Cobrar</button>
+    </div>
+  </div>`;
+}
+function add(id){
+  const it = [...products,...services].find(x=>x.id===id);
+  if(it.stock!==undefined && ((cart.find(c=>c.id===id)||{qty:0}).qty>=it.stock)) return toast('Sin stock suficiente');
+  const c = cart.find(c=>c.id===id);
+  c ? c.qty++ : cart.push({...it,qty:1});
+  render();
+}
+function rm(id){ cart = cart.filter(c=>c.id!==id); render(); }
+function checkout(){
+  if(!cart.length) return toast('Agrega al menos un ítem');
+  const total = cart.reduce((a,i)=>a+i.price*i.qty,0);
+  const isServ = cart.some(i=>i.id.startsWith('s'));
+  cart.forEach(i=>{ const p=products.find(x=>x.id===i.id); if(p) p.stock-=i.qty; });
+  sales.push({id:1000+sales.length+1,cli:posCli.trim()||'Cliente general',items:cart.map(i=>i.name+(i.qty>1?' ×'+i.qty:'')).join(', '),type:isServ?'Servicio':'Producto',total,hora:new Date().toTimeString().slice(0,5),emp:posEmp});
+  cart=[]; posCli=''; toast('Venta registrada: '+bs(total)); render();
+}
+
+function gas(){
+  const s = stats();
+  const porCat = cats.map(c=>[c,gastos.filter(g=>g.cat===c).reduce((a,g)=>a+g.monto,0)]).filter(x=>x[1]>0);
+  return head('Gastos','Registra y controla los egresos del salón') + `
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:gap-4 mb-5">${card('Total gastos',bs(s.g),'text-red-600')}${card('Ingresos',bs(s.total),'text-pink-600')}${card('Utilidad',bs(s.util),s.util>=0?'text-emerald-600':'text-red-600')}</div>
+  <div class="grid lg:grid-cols-3 gap-5">
+    <div class="bg-white border border-gray-200 rounded-lg p-4 lg:p-5 h-fit">
+      <h3 class="font-semibold mb-3">Nuevo gasto</h3>
+      <select id="gCat" class="${inp} mb-2">${cats.map(c=>`<option>${c}</option>`).join('')}</select>
+      <input id="gDesc" placeholder="Descripción" class="${inp} mb-2">
+      <input id="gMonto" type="number" min="0" step="0.01" placeholder="Monto (Bs)" class="${inp} mb-3">
+      <button onclick="addGasto()" class="${btn} w-full">Registrar gasto</button>
+      <h4 class="font-semibold mt-5 mb-2 text-sm">Por categoría</h4>
+      ${porCat.map(([c,v])=>`<div class="flex justify-between text-sm py-1"><span class="text-gray-600">${c}</span><b>${bs(v)}</b></div>`).join('')}
+    </div>
+    <div class="lg:col-span-2 bg-white border border-gray-200 rounded-lg p-4 lg:p-5">
+      <h3 class="font-semibold mb-3">Historial de gastos</h3>
+      <div class="overflow-x-auto"><table class="w-full text-sm whitespace-nowrap"><thead><tr class="text-left text-gray-500 border-b"><th class="py-2 pr-3">Fecha</th><th class="pr-3">Categoría</th><th class="pr-3">Descripción</th><th class="text-right pr-3">Monto</th><th></th></tr></thead><tbody>
+      ${[...gastos].reverse().map(g=>`<tr class="border-b last:border-0"><td class="py-2.5 pr-3">${g.fecha}</td><td class="pr-3"><span class="px-2 py-0.5 rounded-lg text-xs bg-red-50 text-red-700">${g.cat}</span></td><td class="pr-3">${g.desc}</td><td class="text-right font-semibold pr-3">${bs(g.monto)}</td><td><button onclick="delGasto(${g.id})" class="text-red-500">✕</button></td></tr>`).join('')}
+      </tbody></table></div>
+    </div>
+  </div>`;
+}
+function addGasto(){
+  const monto = parseFloat($('gMonto').value), desc = $('gDesc').value.trim();
+  if(!desc || !(monto>0)) return toast('Completa descripción y monto');
+  gastos.push({id:Date.now(),fecha:hoy,cat:$('gCat').value,desc,monto}); toast('Gasto registrado'); render();
+}
+function delGasto(id){ gastos = gastos.filter(g=>g.id!==id); render(); }
+
+function emp(){
+  const nomina = empleados.reduce((a,e)=>a+e.sueldo,0);
+  return head('Empleados','Personal del salón y sus cargos') + `
+  <div class="grid grid-cols-2 gap-3 lg:gap-4 mb-5">${card('Total empleados',empleados.length,'')}${card('Planilla mensual',bs(nomina),'text-pink-600')}</div>
+  <div class="grid lg:grid-cols-3 gap-5">
+    <div class="bg-white border border-gray-200 rounded-lg p-4 lg:p-5 h-fit">
+      <h3 class="font-semibold mb-3">Nuevo empleado</h3>
+      <input id="eNom" placeholder="Nombre completo" class="${inp} mb-2">
+      <select id="eCar" class="${inp} mb-2">${cargos.map(c=>`<option>${c}</option>`).join('')}</select>
+      <input id="eSue" type="number" min="0" placeholder="Sueldo mensual (Bs)" class="${inp} mb-2">
+      <input id="eTel" placeholder="Teléfono" class="${inp} mb-3">
+      <button onclick="addEmp()" class="${btn} w-full">Agregar empleado</button>
+    </div>
+    <div class="lg:col-span-2 bg-white border border-gray-200 rounded-lg p-4 lg:p-5">
+      <div class="overflow-x-auto"><table class="w-full text-sm whitespace-nowrap"><thead><tr class="text-left text-gray-500 border-b"><th class="py-2 pr-3">Nombre</th><th class="pr-3">Cargo</th><th class="pr-3">Teléfono</th><th class="pr-3">Ventas</th><th class="text-right pr-3">Sueldo</th><th></th></tr></thead><tbody>
+      ${empleados.map(e=>`<tr class="border-b last:border-0"><td class="py-2.5 pr-3"><div class="flex items-center gap-2"><span class="w-8 h-8 rounded-lg bg-pink-100 text-pink-700 flex items-center justify-center font-bold">${e.nombre[0]}</span>${e.nombre}</div></td><td class="pr-3"><span class="px-2 py-0.5 rounded-lg text-xs ${cargoColor[e.cargo]}">${e.cargo}</span></td><td class="pr-3">${e.tel||'-'}</td><td class="pr-3">${sales.filter(s=>s.emp===e.nombre).length}</td><td class="text-right font-semibold pr-3">${bs(e.sueldo)}</td><td><button onclick="delEmp(${e.id})" class="text-red-500">✕</button></td></tr>`).join('')}
+      </tbody></table></div>
+    </div>
+  </div>`;
+}
+function addEmp(){
+  const nombre=$('eNom').value.trim(), sueldo=parseFloat($('eSue').value);
+  if(!nombre || !(sueldo>0)) return toast('Completa nombre y sueldo');
+  empleados.push({id:Date.now(),nombre,cargo:$('eCar').value,sueldo,tel:$('eTel').value.trim()}); toast('Empleado agregado'); render();
+}
+function delEmp(id){ if(empleados.length<2) return; empleados = empleados.filter(e=>e.id!==id); render(); }
+
+function inv(){
+  return head('Inventario','Stock actual de productos y catálogo de servicios') + `
+  <div class="bg-white border border-gray-200 rounded-lg p-4 lg:p-5 mb-4 overflow-x-auto"><table class="w-full text-sm whitespace-nowrap"><thead><tr class="text-left text-gray-500 border-b"><th class="py-2 pr-3">Producto</th><th class="pr-3">Precio</th><th class="pr-3">Stock</th><th>Estado</th></tr></thead><tbody>
+  ${products.map(p=>`<tr class="border-b last:border-0"><td class="py-2.5 pr-3"><div class="flex items-center gap-3"><img src="${p.img}" onerror="${fb}" class="w-10 h-10 rounded-lg object-cover">${p.name}</div></td><td class="pr-3">${bs(p.price)}</td><td class="pr-3">${p.stock}</td><td><span class="px-2 py-0.5 rounded-lg text-xs ${p.stock<10?'bg-red-100 text-red-700':'bg-green-100 text-green-700'}">${p.stock<10?'Stock bajo':'Disponible'}</span></td></tr>`).join('')}
+  </tbody></table></div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 lg:gap-4">${services.map(s=>`<div class="bg-white border border-gray-200 rounded-lg overflow-hidden"><img src="${s.img}" onerror="${fb}" class="w-full h-24 object-cover"><div class="p-3 text-sm"><p class="font-medium">${s.name}</p><p class="text-pink-600 font-bold">${bs(s.price)}</p></div></div>`).join('')}</div>`;
+}
+function vent(){
+  const s=stats();
+  return head('Ventas del día','Historial de ventas y servicios registrados') +
+  `<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:gap-4 mb-4">${card('Total vendido',bs(s.total),'text-pink-600')}${card('Ventas de productos',s.prod,'')}${card('Servicios',s.serv,'text-purple-600')}</div>
+  <div class="bg-white border border-gray-200 rounded-lg p-4 lg:p-5">${table([...sales].reverse())}</div>`;
+}
+</script>
+</body>
+</html>
